@@ -33,8 +33,8 @@ func AutoMigrate() {
 }
 
 func (u *UserModel) setPassword(password string) error {
-	if len(password) < 6 || len(password) > 32 {
-		return errors.New("password length should be between 6 and 32")
+	if len(password) < 8 || len(password) > 32 {
+		return errors.New("password length should be between 8 and 32")
 	}
 
 	bytePassword := []byte(password)
@@ -79,7 +79,7 @@ func (u *UserModel) Following(v UserModel) error {
 }
 
 // u是否关注了v
-func (u *UserModel) isFollowing(v *UserModel) bool {
+func (u *UserModel) isFollowing(v UserModel) bool {
 	db := common.GetDB()
 	var follow FollowModel
 	db.Where(FollowModel{
@@ -99,17 +99,21 @@ func (u *UserModel) unFollowing(v UserModel) error {
 	return err
 }
 
+// 获取u的关注列表
 func (u *UserModel) GetFollowings() []UserModel {
 	db := common.GetDB()
 	tx := db.Begin()
 	var followings []UserModel
 	var follows []FollowModel
 	tx.Where(FollowModel{
-		FollowingID: u.ID,
+		FollowedById: u.ID,
 	}).Find(&follows)
 	for _, follow := range follows {
+		// 先获取关注关系模型，拿到每个关注关系的FollowingID
+		// 再根据FollowingID去用户表里查找对应的用户
+		// 这样做的原因是gorm不支持多级嵌套预加载
 		var userModel UserModel
-		tx.Model(&follow).Related(&userModel)
+		tx.Model(&follow).Related(&userModel, "Following")
 		followings = append(followings, userModel)
 	}
 	tx.Commit()

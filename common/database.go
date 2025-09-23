@@ -36,6 +36,9 @@ func TestDBInit() *gorm.DB {
 }
 
 func TestDBFree(test_db *gorm.DB) error {
+	if test_db == nil {
+		return nil
+	}
 	test_db.Close()
 	err := os.Remove("./../gorm_test.db")
 	return err
