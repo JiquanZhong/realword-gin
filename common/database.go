@@ -45,5 +45,8 @@ func TestDBFree(test_db *gorm.DB) error {
 }
 
 func GetDB() *gorm.DB {
+	if DB == nil {
+		Init()
+	}
 	return DB
 }

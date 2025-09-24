@@ -28,7 +28,7 @@ type FollowModel struct {
 func AutoMigrate() {
 	db := common.GetDB()
 
-	db.AutoMigrate(UserModel{})
+	db.AutoMigrate(&UserModel{})
 	db.AutoMigrate(&FollowModel{})
 }
 
@@ -38,8 +38,8 @@ func (u *UserModel) setPassword(password string) error {
 	}
 
 	bytePassword := []byte(password)
-	passwordHass, _ := bcrypt.GenerateFromPassword(bytePassword, bcrypt.DefaultCost)
-	u.PasswordHash = string(passwordHass)
+	passwordHash, _ := bcrypt.GenerateFromPassword(bytePassword, bcrypt.DefaultCost)
+	u.PasswordHash = string(passwordHash)
 	return nil
 }
 

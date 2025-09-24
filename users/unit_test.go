@@ -1,10 +1,13 @@
 package users
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	"github.com/jiquanzhong/realword-gin/common"
 	"github.com/stretchr/testify/assert"
@@ -93,4 +96,50 @@ func resetDBWithMock() {
 
 func HeaderTokenMock(req *http.Request, u uint) {
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %v", common.GenToken(u)))
+}
+
+var unauthRequestTests = []struct {
+	init           func(r *http.Request)
+	url            string
+	method         string
+	bodyData       string
+	expectedCode   int
+	responseRegexg string
+	msg            string
+}{
+	{
+		func(req *http.Request) {
+			resetDBWithMock()
+		},
+		"/users/",
+		"POST",
+		`{"user":{"username": "wangzitian0","email": "wzt@gg.cn","password": "jakejxke"}}`,
+		http.StatusOK,
+		`{"user":{"username":"wangzitian0","email":"wzt@gg.cn","bio":"","image":null,"token":"([a-zA-Z0-9-_.]{115})"}}`,
+		"valid data and should return StatusCreated",
+	},
+}
+
+func TestWithoutAuth(t *testing.T) {
+	asserts := assert.New(t)
+
+	r := gin.New()
+	UsersRegister(r.Group("/users"))
+	UserRegister(r.Group("/user"))
+	ProfileRegister(r.Group("/profiles"))
+
+	for _, testData := range unauthRequestTests {
+		bodyData := testData.bodyData
+		req, err := http.NewRequest(testData.method, testData.url, bytes.NewBufferString(bodyData))
+		req.Header.Set("Content-Type", "application/json")
+		asserts.NoError(err)
+
+		testData.init(req)
+
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		asserts.Equal(testData.expectedCode, w.Code, "Response Status - "+testData.msg)
+		asserts.Regexp(testData.responseRegexg, w.Body.String(), "Response Content - "+testData.msg)
+	}
 }

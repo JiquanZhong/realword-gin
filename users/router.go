@@ -8,8 +8,20 @@ import (
 	"github.com/jiquanzhong/realword-gin/common"
 )
 
+func UsersRegister(router *gin.RouterGroup) {
+	router.POST("/", UserRegistration)
+	router.POST("/login", UserLogin)
+}
+
 func UserRegister(router *gin.RouterGroup) {
-	//router.
+	router.GET("/", UserRetrieve)
+	router.PUT("/", UserUpdate)
+}
+
+func ProfileRegister(router *gin.RouterGroup) {
+	router.GET("/:username", ProfileRetrieve)
+	router.POST("/:username/follow", ProfileFollow)
+	router.DELETE("/:username/follow", ProfileUnFollow)
 }
 
 func ProfileRetrieve(c *gin.Context) {
@@ -89,4 +101,27 @@ func UserLogin(c *gin.Context) {
 	UpdateContextUserModels(c, userModel.ID)
 	userSerializer := UserSerializer{c}
 	c.JSON(http.StatusOK, gin.H{"user": userSerializer.Response()})
+}
+
+func UserRetrieve(c *gin.Context) {
+	serializer := UserSerializer{c}
+	c.JSON(http.StatusOK, gin.H{"user": serializer.Response()})
+}
+
+func UserUpdate(c *gin.Context) {
+	userModel := c.MustGet("my_user_model").(UserModel)
+	userModelValidator := NewUserModelValidatorFillWith(userModel)
+	if err := userModelValidator.Bind(c); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, common.NewValidatorError(err))
+		return
+	}
+
+	userModelValidator.userModel.ID = userModel.ID
+	if err := userModelValidator.userModel.Update(&userModelValidator.userModel); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, common.NewError("database", err))
+		return
+	}
+	UpdateContextUserModels(c, userModel.ID)
+	serializer := UserSerializer{c}
+	c.JSON(http.StatusOK, gin.H{"user": serializer.Response()})
 }
